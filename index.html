@@ -243,8 +243,11 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     });
   }
   function safeUrl(u) {
+    // Hanya alamat lengkap http(s). Kosong, "#", "-", atau teks lain dianggap tidak ada tautan.
+    var v = String(u == null ? '' : u).trim();
+    if (!/^https?:\/\//i.test(v)) return '';
     try {
-      var x = new URL(String(u || ''), location.href);
+      var x = new URL(v);
       return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : '';
     } catch (e) { return ''; }
   }
