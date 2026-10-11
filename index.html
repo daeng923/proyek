@@ -159,8 +159,14 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
 .upinfo{margin:8px 0 0;font-size:13px;color:var(--muted);min-height:20px}
 .upinfo.bad{color:#B42318}
 .upbox label{display:block;margin:14px 0 6px;font-size:14px;font-weight:500}
-.upbox input[type=password]{width:100%;height:48px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);padding:0 14px;font:inherit;font-size:16px;outline:none}
-.upbox input[type=password]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(27,58,92,.12)}
+.upbox input[type=password],.upbox input[type=text],.upbox select,.upbox textarea{width:100%;height:48px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);padding:0 14px;font:inherit;font-size:16px;outline:none}
+.upbox textarea{height:auto;min-height:84px;padding:10px 14px;line-height:1.5;resize:vertical}
+.upbox input[type=password]:focus,.upbox input[type=text]:focus,.upbox select:focus,.upbox textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(27,58,92,.12)}
+.upbox .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.drop.sm{min-height:110px}
+.drop.sm img{max-height:180px}
+.admgrp{display:flex;align-items:center;gap:8px;flex:none}
+.btn2.sm{min-height:36px;padding:0 12px;font-size:13px;border-radius:8px;color:var(--accent);border-color:var(--accent)}
 .upact{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
 .btn2{min-height:48px;padding:0 20px;border-radius:10px;border:1px solid var(--line2);background:transparent;font-weight:500;font-size:15px}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
@@ -173,7 +179,7 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
 <header class="top" id="top">
   <div class="wrap row">
     <span class="brandtxt" id="brandTxt">Galeri Proyek</span>
-    <span class="admtag" id="admTag" hidden>Mode admin</span>
+    <span class="admgrp" id="admGrp" hidden><span class="admtag">Mode admin</span><button class="btn2 sm" type="button" id="btnAdd">Tambah proyek</button></span>
     <div class="icbtn" id="btnRefresh" role="button" tabindex="0" aria-label="Muat ulang data">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
     </div>
@@ -229,6 +235,43 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     </div>
   </div>
 </div>
+<div class="ov up" id="add" aria-hidden="true">
+  <div class="sheet" id="addSheet" role="dialog" aria-modal="true" aria-label="Tambah proyek" tabindex="-1">
+    <div class="upbox">
+      <h2>Tambah proyek</h2>
+      <p class="lead">Kolom bertanda * wajib diisi. Gambar boleh ditempel dengan Ctrl+V.</p>
+      <label for="adCat">Kategori</label>
+      <input type="text" id="adCat" list="adCatList" maxlength="60" autocomplete="off" placeholder="Pilih yang ada atau ketik baru">
+      <datalist id="adCatList"></datalist>
+      <label for="adNama">Nama proyek *</label>
+      <input type="text" id="adNama" maxlength="120" autocomplete="off">
+      <label for="adHook">Hook (satu kalimat)</label>
+      <input type="text" id="adHook" maxlength="200" autocomplete="off">
+      <label for="adDesk">Deskripsi</label>
+      <textarea id="adDesk" rows="3" maxlength="900"></textarea>
+      <label for="adFakta">Sorotan (satu per baris)</label>
+      <textarea id="adFakta" rows="3"></textarea>
+      <label for="adTek">Teknologi (pisah koma)</label>
+      <input type="text" id="adTek" maxlength="300" autocomplete="off" placeholder="Google Apps Script, Google Sheets">
+      <div class="two">
+        <div><label for="adStatus">Status</label><select id="adStatus"></select></div>
+        <div><label for="adTahun">Tahun</label><input type="text" id="adTahun" maxlength="4" inputmode="numeric" autocomplete="off"></div>
+      </div>
+      <label for="adLink">Tautan (opsional)</label>
+      <input type="text" id="adLink" maxlength="500" autocomplete="off" inputmode="url" placeholder="https://...">
+      <label for="adDrop">Gambar (opsional)</label>
+      <div class="drop sm" id="adDrop" tabindex="0" role="button" aria-label="Tempel atau pilih gambar"></div>
+      <input type="file" id="adFile" accept="image/png,image/jpeg,image/webp" hidden>
+      <div class="upinfo" id="adInfo"></div>
+      <label for="adPin">PIN admin</label>
+      <input type="password" id="adPin" autocomplete="off" spellcheck="false">
+      <div class="upact">
+        <button class="btn2" type="button" id="adCancel">Batal</button>
+        <button class="btn" type="button" id="adSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -276,11 +319,18 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     hookBox: $('#hookBox'), hookTxt: $('#hookTxt'),
     stats: $('#stats'), q: $('#q'), chips: $('#chips'), count: $('#count'), grid: $('#grid'),
     foot: $('#foot'), ov: $('#ov'), sheet: $('#sheet'), toast: $('#toast'),
-    admTag: $('#admTag'), up: $('#up'), upSheet: $('#upSheet'), upTitle: $('#upTitle'), upDrop: $('#upDrop'),
-    upFile: $('#upFile'), upInfo: $('#upInfo'), upPin: $('#upPin'), upSave: $('#upSave'), upCancel: $('#upCancel')
+    admGrp: $('#admGrp'), btnAdd: $('#btnAdd'),
+    up: $('#up'), upSheet: $('#upSheet'), upTitle: $('#upTitle'), upDrop: $('#upDrop'),
+    upFile: $('#upFile'), upInfo: $('#upInfo'), upPin: $('#upPin'), upSave: $('#upSave'), upCancel: $('#upCancel'),
+    add: $('#add'), adCat: $('#adCat'), adCatList: $('#adCatList'), adNama: $('#adNama'), adHook: $('#adHook'),
+    adDesk: $('#adDesk'), adFakta: $('#adFakta'), adTek: $('#adTek'), adStatus: $('#adStatus'), adTahun: $('#adTahun'),
+    adLink: $('#adLink'), adDrop: $('#adDrop'), adFile: $('#adFile'), adInfo: $('#adInfo'), adPin: $('#adPin'),
+    adSave: $('#adSave'), adCancel: $('#adCancel')
   };
-  if (ADMIN) el.admTag.hidden = false;
+  if (ADMIN) el.admGrp.hidden = false;
   const upS = { item: null, blob: null, url: '', busy: false, last: null };
+  const adS = { blob: null, url: '', busy: false, last: null };
+  const STATUS_LIST = ['Aktif', 'Pengembangan', 'Pemeliharaan', 'Selesai'];
 
   const state = { cfg: {}, items: [], cats: [], cat: 'Semua', q: '', view: [], cur: -1, updated: '', demo: false, visits: null };
   let hookTimer = null, io = null, lastFocus = null, toastTimer = null, tracked = false;
@@ -702,6 +752,21 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     });
   }
 
+  async function postGAS(body) {
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, 60000);
+    var res;
+    try {
+      // Tanpa header khusus agar tidak memicu preflight CORS pada GAS.
+      res = await fetch(GAS_URL, { method: 'POST', redirect: 'follow', signal: ctl.signal, body: JSON.stringify(body) });
+    } finally { clearTimeout(timer); }
+    var j;
+    try { j = JSON.parse(await res.text()); }
+    catch (e) { throw new Error('Respons bukan JSON. Pasang Code.gs terbaru sebagai Versi baru (Deploy > Kelola deployment > Edit).'); }
+    if (j.status !== 'ok') throw new Error(j.message || 'Gagal menyimpan.');
+    return j;
+  }
+
   async function setUpImage(file) {
     if (!file || !/^image\//i.test(file.type || '')) { setUpInfo('Berkas itu bukan gambar.', true); return; }
     setUpInfo('Memproses gambar', false);
@@ -746,20 +811,7 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     setUpInfo('Mengunggah, mohon tunggu', false);
     try {
       var b64 = await blobToB64(upS.blob);
-      var ctl = new AbortController();
-      var timer = setTimeout(function () { ctl.abort(); }, 60000);
-      var res;
-      try {
-        // Tanpa header khusus agar tidak memicu preflight CORS pada GAS.
-        res = await fetch(GAS_URL, {
-          method: 'POST', redirect: 'follow', signal: ctl.signal,
-          body: JSON.stringify({ action: 'upload', pin: pin, baris: it.baris, nama: it.nama, data: b64 })
-        });
-      } finally { clearTimeout(timer); }
-      var j;
-      try { j = JSON.parse(await res.text()); }
-      catch (e) { throw new Error('Respons bukan JSON. Pasang Code.gs terbaru sebagai Versi baru (Deploy > Kelola deployment > Edit).'); }
-      if (j.status !== 'ok') throw new Error(j.message || 'Gagal menyimpan.');
+      var j = await postGAS({ action: 'upload', pin: pin, baris: it.baris, nama: it.nama, data: b64 });
       try { sessionStorage.setItem(PIN_KEY, pin); } catch (e) {}
       try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
       setUpInfo('Tersimpan. Menunggu pratinjau dari Drive', false);
@@ -778,7 +830,132 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     }
   }
 
+  /* ---------- tambah proyek (mode admin) ---------- */
+  function setAdInfo(msg, bad) {
+    el.adInfo.textContent = msg || '';
+    el.adInfo.classList.toggle('bad', !!bad);
+  }
+
+  function clearAdImage() {
+    if (adS.url) { try { URL.revokeObjectURL(adS.url); } catch (e) {} }
+    adS.url = ''; adS.blob = null;
+    el.adDrop.innerHTML = '<span>Tekan <b>Ctrl+V</b> untuk menempel gambar, atau klik untuk memilih berkas</span>';
+  }
+
+  function openAdd() {
+    if (state.demo || isPlaceholder()) { toast('Mode demo: isi GAS_URL di index.html dulu.'); return; }
+    adS.last = document.activeElement;
+    ['adNama', 'adHook', 'adDesk', 'adFakta', 'adTek', 'adLink'].forEach(function (k) { el[k].value = ''; });
+    el.adCat.value = state.cat !== 'Semua' ? state.cat : '';
+    el.adCatList.innerHTML = state.cats.map(function (c) { return '<option value="' + esc(c) + '"></option>'; }).join('');
+    el.adStatus.innerHTML = STATUS_LIST.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+    el.adStatus.value = 'Aktif';
+    el.adTahun.value = String(new Date().getFullYear());
+    clearAdImage();
+    setAdInfo('', false);
+    try { el.adPin.value = sessionStorage.getItem(PIN_KEY) || ''; } catch (e) { el.adPin.value = ''; }
+    el.adSave.disabled = false;
+    el.adSave.textContent = 'Simpan';
+    el.add.classList.add('open');
+    el.add.setAttribute('aria-hidden', 'false');
+    setTimeout(function () { el.adCat.focus({ preventScroll: true }); }, 50);
+  }
+
+  function closeAdd() {
+    if (adS.busy) return;
+    el.add.classList.remove('open');
+    el.add.setAttribute('aria-hidden', 'true');
+    clearAdImage();
+    el.adPin.value = '';
+    if (adS.last && adS.last.focus) { try { adS.last.focus({ preventScroll: true }); } catch (e) {} }
+  }
+
+  async function setAddImage(file) {
+    if (!file || !/^image\//i.test(file.type || '')) { setAdInfo('Berkas itu bukan gambar.', true); return; }
+    setAdInfo('Memproses gambar', false);
+    try {
+      var out = await shrink(file);
+      clearAdImage();
+      adS.blob = out.blob;
+      adS.url = URL.createObjectURL(out.blob);
+      var im = document.createElement('img');
+      im.src = adS.url;
+      im.alt = 'Pratinjau gambar yang akan disimpan';
+      el.adDrop.textContent = '';
+      el.adDrop.appendChild(im);
+      setAdInfo(out.w + ' x ' + out.h + ' px, ' + Math.round(out.blob.size / 1024) + ' KB.', false);
+    } catch (e) {
+      setAdInfo('Gambar tidak dapat dibaca. Coba ambil tangkapan layar lagi.', true);
+    }
+  }
+
+  async function saveAdd() {
+    if (adS.busy) return;
+    var nama = el.adNama.value.trim();
+    if (!nama) { setAdInfo('Nama proyek wajib diisi.', true); el.adNama.focus(); return; }
+    var pin = el.adPin.value;
+    if (!pin) { setAdInfo('Isi PIN admin dulu.', true); el.adPin.focus(); return; }
+    adS.busy = true;
+    el.adSave.disabled = true;
+    el.adSave.textContent = 'Menyimpan';
+    setAdInfo('Menyimpan proyek', false);
+    try {
+      var body = {
+        action: 'tambah', pin: pin,
+        kategori: el.adCat.value.trim(), nama: nama, hook: el.adHook.value.trim(), deskripsi: el.adDesk.value.trim(),
+        fakta: el.adFakta.value.split(/\r?\n/), teknologi: el.adTek.value.split(','),
+        status: el.adStatus.value, tahun: el.adTahun.value.trim(), tautan: el.adLink.value.trim()
+      };
+      var hasImg = !!adS.blob;
+      if (hasImg) body.data = await blobToB64(adS.blob);
+      await postGAS(body);
+      try { sessionStorage.setItem(PIN_KEY, pin); } catch (e) {}
+      try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+      adS.busy = false;
+      closeAdd();
+      state.cat = 'Semua'; state.q = ''; el.q.value = '';
+      await load(true);
+      var cards = el.grid.querySelectorAll('.card[data-i]');
+      if (cards.length && cards[cards.length - 1].scrollIntoView) {
+        cards[cards.length - 1].scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+      }
+      toast('Proyek ditambahkan');
+      if (hasImg) {
+        var added = state.items.filter(function (x) { return x.nama === nama; })[0];
+        if (added && added.gambar) { await waitImage(added.gambar); renderGrid(); }
+      }
+    } catch (e) {
+      adS.busy = false;
+      el.adSave.disabled = false;
+      el.adSave.textContent = 'Simpan';
+      setAdInfo(e && e.name === 'AbortError' ? 'Waktu tunggu habis. Periksa sheet Proyek; mungkin sudah tersimpan.' : ((e && e.message) || 'Gagal menyimpan.'), true);
+    }
+  }
+
   if (ADMIN) {
+    el.btnAdd.addEventListener('click', openAdd);
+    el.adDrop.addEventListener('click', function () { el.adFile.click(); });
+    el.adDrop.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.adFile.click(); }
+    });
+    el.adFile.addEventListener('change', function () {
+      var f = el.adFile.files && el.adFile.files[0];
+      el.adFile.value = '';
+      if (f) setAddImage(f);
+    });
+    el.adDrop.addEventListener('dragover', function (e) { e.preventDefault(); el.adDrop.classList.add('over'); });
+    el.adDrop.addEventListener('dragleave', function () { el.adDrop.classList.remove('over'); });
+    el.adDrop.addEventListener('drop', function (e) {
+      e.preventDefault();
+      el.adDrop.classList.remove('over');
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) setAddImage(f);
+    });
+    el.adSave.addEventListener('click', saveAdd);
+    el.adCancel.addEventListener('click', closeAdd);
+    el.add.addEventListener('click', function (e) { if (e.target === el.add) closeAdd(); });
+    el.adPin.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); saveAdd(); } });
+
     el.upDrop.addEventListener('click', function () { el.upFile.click(); });
     el.upDrop.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.upFile.click(); }
@@ -810,6 +987,7 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
       }
       if (!file) return; // tempel teks biasa (misalnya PIN) dibiarkan
       e.preventDefault();
+      if (el.add.classList.contains('open')) { setAddImage(file); return; }
       if (!el.up.classList.contains('open')) {
         if (el.ov.classList.contains('open') && state.view[state.cur]) openUp(state.view[state.cur]);
         else { toast('Buka dulu proyeknya, lalu tempel gambar dengan Ctrl+V.'); return; }
@@ -870,6 +1048,7 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
   });
 
   document.addEventListener('keydown', function (e) {
+    if (el.add.classList.contains('open')) { if (e.key === 'Escape') closeAdd(); return; }
     if (el.up.classList.contains('open')) { if (e.key === 'Escape') closeUp(); return; }
     if (!el.ov.classList.contains('open')) return;
     if (e.key === 'Escape') closeSheet();
