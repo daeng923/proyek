@@ -143,6 +143,28 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);z-index:80;max-width:88vw;padding:12px 18px;border-radius:10px;background:var(--ink);color:#fff;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
+/* mode admin: unggah gambar dengan tempel */
+.admtag{font-size:12.5px;color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:2px 10px;white-space:nowrap}
+.admbtn{position:absolute;left:10px;top:10px;z-index:3;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);background:rgba(255,255,255,.95);font-size:13px;font-weight:500;color:var(--accent)}
+.admbtn:hover{background:#fff;border-color:var(--accent)}
+.ov.up{z-index:70}
+#upSheet{max-width:520px}
+.upbox{padding:22px 22px 24px;overflow-y:auto}
+.upbox h2{margin:0 0 4px;font-size:26px;line-height:1.15}
+.upbox .lead{margin:0 0 14px;color:var(--muted);font-size:14.5px}
+.drop{display:grid;place-items:center;text-align:center;min-height:190px;border:1.5px dashed var(--line2);border-radius:var(--r);background:var(--bg);color:var(--muted);padding:16px;outline:none;cursor:pointer}
+.drop:focus-visible,.drop.over{border-color:var(--accent);background:#EEF1F5}
+.drop img{max-width:100%;max-height:260px;border-radius:8px;display:block}
+.drop b{color:var(--ink);font-weight:600}
+.upinfo{margin:8px 0 0;font-size:13px;color:var(--muted);min-height:20px}
+.upinfo.bad{color:#B42318}
+.upbox label{display:block;margin:14px 0 6px;font-size:14px;font-weight:500}
+.upbox input[type=password]{width:100%;height:48px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--ink);padding:0 14px;font:inherit;font-size:16px;outline:none}
+.upbox input[type=password]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(27,58,92,.12)}
+.upact{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.btn2{min-height:48px;padding:0 20px;border-radius:10px;border:1px solid var(--line2);background:transparent;font-weight:500;font-size:15px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
 @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
 </head>
@@ -151,6 +173,7 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
 <header class="top" id="top">
   <div class="wrap row">
     <span class="brandtxt" id="brandTxt">Galeri Proyek</span>
+    <span class="admtag" id="admTag" hidden>Mode admin</span>
     <div class="icbtn" id="btnRefresh" role="button" tabindex="0" aria-label="Muat ulang data">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
     </div>
@@ -189,6 +212,23 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
 <div class="ov" id="ov" aria-hidden="true">
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Detail proyek" tabindex="-1"></div>
 </div>
+<div class="ov up" id="up" aria-hidden="true">
+  <div class="sheet" id="upSheet" role="dialog" aria-modal="true" aria-label="Unggah gambar proyek" tabindex="-1">
+    <div class="upbox">
+      <h2 id="upTitle">Gambar proyek</h2>
+      <p class="lead">Ambil tangkapan layar (Shift+Windows+S), lalu tekan <b>Ctrl+V</b> di sini. Bisa juga seret berkas gambar atau klik kotak di bawah.</p>
+      <div class="drop" id="upDrop" tabindex="0" role="button" aria-label="Tempel atau pilih gambar"><span id="upHint">Tekan <b>Ctrl+V</b> untuk menempel gambar</span></div>
+      <input type="file" id="upFile" accept="image/png,image/jpeg,image/webp" hidden>
+      <div class="upinfo" id="upInfo"></div>
+      <label for="upPin">PIN admin</label>
+      <input type="password" id="upPin" autocomplete="off" inputmode="text" spellcheck="false">
+      <div class="upact">
+        <button class="btn2" type="button" id="upCancel">Batal</button>
+        <button class="btn" type="button" id="upSave" disabled>Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -202,6 +242,11 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
   const CACHE_TTL = 5 * 60 * 1000;
   const FETCH_TIMEOUT = 20000;
   const VID_KEY = 'galeri_vid';
+  const PIN_KEY = 'galeri_pin';          // disimpan di sessionStorage (hilang saat tab ditutup)
+  const MAX_W = 1280;                    // lebar maksimum gambar yang diunggah (piksel)
+  const JPEG_Q = 0.88;                   // kualitas JPEG
+  // Mode admin: buka halaman dengan tambahan ?admin di alamatnya.
+  const ADMIN = /[?&]admin(=|&|$)/.test(location.search);
   /* ===================================== */
 
   const DEMO = {
@@ -230,8 +275,12 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     eyebrow: $('#eyebrow'), title: $('#title'), sub: $('#subtitle'),
     hookBox: $('#hookBox'), hookTxt: $('#hookTxt'),
     stats: $('#stats'), q: $('#q'), chips: $('#chips'), count: $('#count'), grid: $('#grid'),
-    foot: $('#foot'), ov: $('#ov'), sheet: $('#sheet'), toast: $('#toast')
+    foot: $('#foot'), ov: $('#ov'), sheet: $('#sheet'), toast: $('#toast'),
+    admTag: $('#admTag'), up: $('#up'), upSheet: $('#upSheet'), upTitle: $('#upTitle'), upDrop: $('#upDrop'),
+    upFile: $('#upFile'), upInfo: $('#upInfo'), upPin: $('#upPin'), upSave: $('#upSave'), upCancel: $('#upCancel')
   };
+  if (ADMIN) el.admTag.hidden = false;
+  const upS = { item: null, blob: null, url: '', busy: false, last: null };
 
   const state = { cfg: {}, items: [], cats: [], cat: 'Semua', q: '', view: [], cur: -1, updated: '', demo: false, visits: null };
   let hookTimer = null, io = null, lastFocus = null, toastTimer = null, tracked = false;
@@ -318,7 +367,7 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     el.demo.hidden = !state.demo;
     apply(data);
     if (force) toast('Data diperbarui');
-    if (!state.demo && !tracked) { tracked = true; trackVisit(); }
+    if (!state.demo && !tracked && !ADMIN) { tracked = true; trackVisit(); } // kunjungan admin tidak dihitung
   }
 
   /* ---------- hitung pengunjung ---------- */
@@ -476,10 +525,14 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     return s ? '<span class="st ' + statusClass(s) + '"><i></i>' + esc(s) + '</span>' : '';
   }
 
+  function admBtn(i) {
+    return ADMIN ? '<button class="admbtn" type="button" data-act="img" data-i="' + i + '">' + 'Tempel gambar</button>' : '';
+  }
+
   function cardHTML(it, i) {
     var tech = it.teknologi.slice(0, 3).map(esc).join(', ');
     return '<article class="card" tabindex="0" role="button" data-i="' + i + '" aria-label="' + esc('Buka detail ' + it.nama) + '">' +
-      '<div class="thumb">' + placeholder(it) + imgTag(it) + '</div>' +
+      '<div class="thumb">' + placeholder(it) + imgTag(it) + admBtn(i) + '</div>' +
       '<div class="cbody">' +
         '<div class="clabel">' + esc(it.kategori) + '</div>' +
         '<h3 class="ctitle">' + esc(it.nama) + '</h3>' +
@@ -525,7 +578,7 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     var tech = it.teknologi.map(esc).join(', ');
     return '<button class="close" type="button" data-act="close" aria-label="Tutup"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
       '<div class="sscroll" id="sscroll">' +
-        '<div class="smedia">' + placeholder(it) + (u ? imgTag(it) : '') + '</div>' +
+        '<div class="smedia">' + placeholder(it) + (u ? imgTag(it) : '') + admBtn(state.cur) + '</div>' +
         '<div class="sbody">' +
           '<div class="clabel">' + esc(it.kategori) + '</div>' +
           '<h2 class="stitle">' + esc(it.nama) + '</h2>' +
@@ -575,15 +628,209 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     if (sc) sc.scrollTop = 0;
   }
 
+  /* ---------- unggah gambar (mode admin) ---------- */
+  function setUpInfo(msg, bad) {
+    el.upInfo.textContent = msg || '';
+    el.upInfo.classList.toggle('bad', !!bad);
+  }
+
+  function clearUpImage() {
+    if (upS.url) { try { URL.revokeObjectURL(upS.url); } catch (e) {} }
+    upS.url = ''; upS.blob = null;
+    el.upDrop.innerHTML = '<span>Tekan <b>Ctrl+V</b> untuk menempel gambar</span>';
+    el.upSave.disabled = true;
+  }
+
+  function openUp(item) {
+    if (state.demo || isPlaceholder()) { toast('Mode demo: isi GAS_URL di index.html dulu.'); return; }
+    if (!item || !item.baris) { toast('Pasang Code.gs terbaru, lalu muat ulang halaman.'); return; }
+    upS.last = document.activeElement;
+    upS.item = item;
+    clearUpImage();
+    el.upSave.textContent = 'Simpan';
+    el.upTitle.textContent = 'Gambar: ' + item.nama;
+    try { el.upPin.value = sessionStorage.getItem(PIN_KEY) || ''; } catch (e) { el.upPin.value = ''; }
+    setUpInfo('', false);
+    el.up.classList.add('open');
+    el.up.setAttribute('aria-hidden', 'false');
+    setTimeout(function () { el.upDrop.focus({ preventScroll: true }); }, 50);
+  }
+
+  function closeUp() {
+    if (upS.busy) return;
+    el.up.classList.remove('open');
+    el.up.setAttribute('aria-hidden', 'true');
+    clearUpImage();
+    upS.item = null;
+    el.upPin.value = '';
+    if (upS.last && upS.last.focus) { try { upS.last.focus({ preventScroll: true }); } catch (e) {} }
+  }
+
+  function loadBitmap(file) {
+    if (window.createImageBitmap) return createImageBitmap(file);
+    return new Promise(function (res, rej) {
+      var u = URL.createObjectURL(file), im = new Image();
+      im.onload = function () { URL.revokeObjectURL(u); res(im); };
+      im.onerror = function () { URL.revokeObjectURL(u); rej(new Error('gambar')); };
+      im.src = u;
+    });
+  }
+
+  async function shrink(file) {
+    var bmp = await loadBitmap(file);
+    var w = bmp.width, h = bmp.height;
+    if (!w || !h) throw new Error('kosong');
+    var sc = Math.min(1, MAX_W / w);
+    var cw = Math.max(1, Math.round(w * sc)), ch = Math.max(1, Math.round(h * sc));
+    var cv = document.createElement('canvas');
+    cv.width = cw; cv.height = ch;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(bmp, 0, 0, cw, ch);
+    if (bmp.close) { try { bmp.close(); } catch (e) {} }
+    var blob = await new Promise(function (res) { cv.toBlob(res, 'image/jpeg', JPEG_Q); });
+    if (!blob) throw new Error('gagal');
+    return { blob: blob, w: cw, h: ch };
+  }
+
+  function blobToB64(blob) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { var s = String(r.result); res(s.slice(s.indexOf(',') + 1)); };
+      r.onerror = function () { rej(new Error('baca')); };
+      r.readAsDataURL(blob);
+    });
+  }
+
+  async function setUpImage(file) {
+    if (!file || !/^image\//i.test(file.type || '')) { setUpInfo('Berkas itu bukan gambar.', true); return; }
+    setUpInfo('Memproses gambar', false);
+    try {
+      var out = await shrink(file);
+      clearUpImage();
+      upS.blob = out.blob;
+      upS.url = URL.createObjectURL(out.blob);
+      var im = document.createElement('img');
+      im.src = upS.url;
+      im.alt = 'Pratinjau gambar yang akan disimpan';
+      el.upDrop.textContent = '';
+      el.upDrop.appendChild(im);
+      el.upSave.disabled = false;
+      setUpInfo(out.w + ' x ' + out.h + ' px, ' + Math.round(out.blob.size / 1024) + ' KB. Rasio 16:10 paling pas; selebihnya terpotong di kartu.', false);
+    } catch (e) {
+      setUpInfo('Gambar tidak dapat dibaca. Coba ambil tangkapan layar lagi.', true);
+    }
+  }
+
+  function waitImage(url) {
+    return new Promise(function (resolve) {
+      var n = 0;
+      (function once() {
+        var im = new Image();
+        im.referrerPolicy = 'no-referrer';
+        im.onload = function () { resolve(true); };
+        im.onerror = function () { if (++n >= 5) resolve(false); else setTimeout(once, 1500); };
+        im.src = url + (n ? '&r=' + n : '');
+      })();
+    });
+  }
+
+  async function saveUp() {
+    if (upS.busy || !upS.blob || !upS.item) return;
+    var pin = el.upPin.value;
+    if (!pin) { setUpInfo('Isi PIN admin dulu.', true); el.upPin.focus(); return; }
+    var it = upS.item;
+    upS.busy = true;
+    el.upSave.disabled = true;
+    el.upSave.textContent = 'Menyimpan';
+    setUpInfo('Mengunggah, mohon tunggu', false);
+    try {
+      var b64 = await blobToB64(upS.blob);
+      var ctl = new AbortController();
+      var timer = setTimeout(function () { ctl.abort(); }, 60000);
+      var res;
+      try {
+        // Tanpa header khusus agar tidak memicu preflight CORS pada GAS.
+        res = await fetch(GAS_URL, {
+          method: 'POST', redirect: 'follow', signal: ctl.signal,
+          body: JSON.stringify({ action: 'upload', pin: pin, baris: it.baris, nama: it.nama, data: b64 })
+        });
+      } finally { clearTimeout(timer); }
+      var j;
+      try { j = JSON.parse(await res.text()); }
+      catch (e) { throw new Error('Respons bukan JSON. Pasang Code.gs terbaru sebagai Versi baru (Deploy > Kelola deployment > Edit).'); }
+      if (j.status !== 'ok') throw new Error(j.message || 'Gagal menyimpan.');
+      try { sessionStorage.setItem(PIN_KEY, pin); } catch (e) {}
+      try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+      setUpInfo('Tersimpan. Menunggu pratinjau dari Drive', false);
+      var ready = await waitImage(j.gambar);
+      it.gambar = j.gambar;
+      upS.busy = false;
+      closeUp();
+      renderGrid();
+      if (el.ov.classList.contains('open')) renderSheet();
+      toast(ready ? 'Gambar tersimpan' : 'Gambar tersimpan. Pratinjau Drive butuh beberapa detik; muat ulang bila belum tampil.');
+    } catch (e) {
+      upS.busy = false;
+      el.upSave.disabled = false;
+      el.upSave.textContent = 'Simpan';
+      setUpInfo(e && e.name === 'AbortError' ? 'Waktu tunggu habis. Periksa kolom Gambar di spreadsheet; mungkin sudah tersimpan.' : ((e && e.message) || 'Gagal menyimpan.'), true);
+    }
+  }
+
+  if (ADMIN) {
+    el.upDrop.addEventListener('click', function () { el.upFile.click(); });
+    el.upDrop.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.upFile.click(); }
+    });
+    el.upFile.addEventListener('change', function () {
+      var f = el.upFile.files && el.upFile.files[0];
+      el.upFile.value = '';
+      if (f) setUpImage(f);
+    });
+    el.upDrop.addEventListener('dragover', function (e) { e.preventDefault(); el.upDrop.classList.add('over'); });
+    el.upDrop.addEventListener('dragleave', function () { el.upDrop.classList.remove('over'); });
+    el.upDrop.addEventListener('drop', function (e) {
+      e.preventDefault();
+      el.upDrop.classList.remove('over');
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) setUpImage(f);
+    });
+    el.upSave.addEventListener('click', saveUp);
+    el.upCancel.addEventListener('click', closeUp);
+    el.up.addEventListener('click', function (e) { if (e.target === el.up) closeUp(); });
+    el.upPin.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); saveUp(); } });
+
+    // Tempel (Ctrl+V): gambar dari clipboard, misalnya hasil Shift+Windows+S.
+    document.addEventListener('paste', function (e) {
+      var list = (e.clipboardData && e.clipboardData.items) || [];
+      var file = null;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].kind === 'file' && /^image\//i.test(list[i].type)) { file = list[i].getAsFile(); break; }
+      }
+      if (!file) return; // tempel teks biasa (misalnya PIN) dibiarkan
+      e.preventDefault();
+      if (!el.up.classList.contains('open')) {
+        if (el.ov.classList.contains('open') && state.view[state.cur]) openUp(state.view[state.cur]);
+        else { toast('Buka dulu proyeknya, lalu tempel gambar dengan Ctrl+V.'); return; }
+        if (!el.up.classList.contains('open')) return;
+      }
+      setUpImage(file);
+    });
+  }
+
   /* ---------- event ---------- */
   el.grid.addEventListener('click', function (e) {
     var r = e.target.closest('[data-act="retry"]');
     if (r) { load(true); return; }
+    var im = e.target.closest('[data-act="img"]');
+    if (im) { e.stopPropagation(); openUp(state.view[+im.getAttribute('data-i')]); return; }
     var c = e.target.closest('.card[data-i]');
     if (c) openSheet(+c.getAttribute('data-i'));
   });
   el.grid.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('[data-act="img"]')) return; // biarkan tombol bekerja sendiri
     var c = e.target.closest('.card[data-i]');
     if (c) { e.preventDefault(); openSheet(+c.getAttribute('data-i')); }
   });
@@ -616,12 +863,14 @@ h1{margin:0 0 14px;font-size:clamp(36px,9vw,64px);line-height:1.05;letter-spacin
     var b = e.target.closest('[data-act]');
     if (!b) return;
     var a = b.getAttribute('data-act');
-    if (a === 'close') closeSheet();
+    if (a === 'img') openUp(state.view[state.cur]);
+    else if (a === 'close') closeSheet();
     else if (a === 'prev') step(-1);
     else if (a === 'next') step(1);
   });
 
   document.addEventListener('keydown', function (e) {
+    if (el.up.classList.contains('open')) { if (e.key === 'Escape') closeUp(); return; }
     if (!el.ov.classList.contains('open')) return;
     if (e.key === 'Escape') closeSheet();
     else if (e.key === 'ArrowLeft') step(-1);
